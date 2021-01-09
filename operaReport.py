@@ -34,11 +34,11 @@ from tkinter import *
 from threading import Timer
 
 from arrivalSorter import arrivalOPTs
-from manualNoShowEntry import manualNoShowQ
-from manualNoShowEntry import manualNOshowEntry
+from manualEntries import manualNOshowEntry
+from manualEntries import manualLCXLEntry
 
-from manualWalkEntry import manualWalkQ
-from manualWalkEntry import manualWalkEntry
+from manualEntries import manuaQ
+from manualEntries import manualWalkEntry
 
 # section for the title
 # time data extratct
@@ -84,8 +84,8 @@ stattitle = ['STATISTICS']
 statistics = [['Total Revenue'],['Total Rooms Reserved'],['% of Rooms Occupied'],['Opera CC Total']]
 
 # Manager report
-mgrx = 'mgr.xml'
-mgrz = os.path.join('xmltut',mgrx)
+mgrx = mgrxFile[0]
+mgrz = os.path.join(Targfold[0],mgrx)
 mgrf = ElementTree.parse(mgrz)
 print(mgrf)
 
@@ -111,8 +111,8 @@ for lf in range(0,99):
 
 # credit cards total appends to statistics table>>>>>>>>>>>>>>>>>>
 # credit cards total xml data extract
-ccx = 'cred.xml'
-ccz = os.path.join('xmltut',ccx)
+ccx = ccxFile[0]
+ccz = os.path.join(Targfold[0],ccx)
 ccf = ElementTree.parse(ccz)
 print(ccf)
 
@@ -127,8 +127,8 @@ statistics[3].append(cctotal[0].text)
 detailedavail = [['DETAILED AVAILABILITY as of',audited],['QBS'],['SJR'],['VIP'],['TOTAL']]
 
 # detailed av xml data extract
-detavx = 'detav.xml'
-detavz = os.path.join('xmltut',detavx)
+detavx = detavxFile[0]
+detavz = os.path.join(Targfold[0],detavx)
 detavf = ElementTree.parse(detavz)
 print(detavf)
 
@@ -155,8 +155,8 @@ detailedavail[4].append(sum(numeros))
 # zero rate
 # zero rate xml data extract
 
-zerox = 'zero.xml'
-zeroz = os.path.join('xmltut',zerox)
+zerox = zeroxFile[0]
+zeroz = os.path.join(Targfold[0],zerox)
 zerof = ElementTree.parse(zeroz)
 print(zerof)
 
@@ -202,10 +202,9 @@ for zr in range(1,(len(roomhold)+1)):
 # tax exempt xml data extract
 # Tax Exempt Room# $Rate #Nights
 
-# taxExmpt = [['Tax Exempt','Room No.', '$Rate','Nights']]
 
-taxx = 'taxexempt3.xml'
-taxz = os.path.join('xmltut',taxx)
+taxx = taxxFile[0]
+taxz = os.path.join(Targfold[0],taxx)
 taxf = ElementTree.parse(taxz)
 print(taxf)
 
@@ -292,8 +291,8 @@ def groupEntry():
 
 # for walks late check ins no shows, Arrivals are grabbed and user enters group per res and tells program which is walk res and late cxl res
 
-arrx = 'arr3.xml'
-arrz = os.path.join('xmltut',arrx)
+arrx = arrxFile[0]
+arrz = os.path.join(Targfold[0],arrx)
 arrf = ElementTree.parse(arrz)
 print(arrf)
 
@@ -392,6 +391,74 @@ for arr in range(1,(z+1)):
 arrivalOPTs(arrivalMain,walkData,LateCXlData)
 print(arrivalMain)
 # this function asks User if any Noshows need to be manually entered
-manualNoShowQ(arrivalMain)
-manualWalkQ(walkData)
+manuaQ(arrivalMain,walkData,LateCXlData)
 print(arrivalMain)
+
+
+
+
+
+
+#Forecast xml data extract
+
+forecasttitle = ['Forecast for the following 7 Days']
+
+
+
+# hist and forec data
+forecastx = forecastxFile[0]
+forecastz = os.path.join(Targfold[0],forecastx)
+forecastf = ElementTree.parse(forecastz)
+print(forecastf)
+
+
+# Date Occupancy RMS RSVD Arrivals Departures Avg. Rate
+mainForecastList = [['Date',' Occupancy','RMS','RSVD','Arrivals','Departures','Avg. Rate']]
+
+for x in range(2,9):
+    forecastentry = []
+    route = f'LIST_G_GPAGEID/G_GPAGEID/LIST_G_REC_TYPE/G_REC_TYPE[2]/LIST_G_CONSIDERED_DATE/G_CONSIDERED_DATE[{x}]/'
+    dates = forecastf.findall(f'{route}CHAR_CONSIDERED_DATE')
+    occ = forecastf.findall(f'{route}CF_OCCUPANCY')
+    rmsres = forecastf.findall(f'{route}NO_ROOMS')
+    arrs = forecastf.findall(f'{route}ARRIVAL_ROOMS')
+    deps = forecastf.findall(f'{route}DEPARTURE_ROOMS')
+    avgr = forecastf.findall(f'{route}CF_AVERAGE_ROOM_RATE')
+    
+    
+    for c in dates:
+        forecastentry.append(c.text)
+
+    for d in occ:
+        forecastentry.append(f'{d.text}%')
+
+    for e in rmsres:
+        forecastentry.append(e.text)
+
+    for f in arrs:
+        forecastentry.append(f.text)
+
+    for g in deps:
+        forecastentry.append(g.text)
+
+    for h in deps:
+        forecastentry.append(h.text)
+        
+    for i in avgr:
+        forecastentry.append(f'${i.text}')
+    mainForecastList.append(forecastentry)
+
+
+
+
+
+
+print(title)
+print(stattitle)
+print(statistics )
+print(detailedavail)
+print(zeroRateRooms)
+print(walkData)
+print(LateCXlData)
+print(arrivalMain)
+print(mainForecastList)
