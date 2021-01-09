@@ -1,3 +1,26 @@
+
+# program should be run after midnight
+# user must log in
+# program executes >>>>
+# creates folder for xml files and pdf to be downloaded to manually
+# creates data for cover page of final report
+# title block dated previous day
+# data gathered from xml forms
+# ---- stats
+# ---- det av
+# ---- tax exempt
+# ---- house use
+# >>>>>>>>>>>>>>>>>>>>> Arrivals xml provides all arrivals. as loop goes through 
+# >>>>>>>>>>>>>>>>>>>>> tkinter gui appears asks user for group listing 
+# >>>>>>>>>>>>>>>>>>>>> User is asked which ones are walked late cxl or arrived 
+# >>>>>>>>>>>>>>>>>>>>> any not sorted by user will be listed as no show
+# ---- walked
+# ---- late cxl
+# ---- no show
+# ---- forecast
+
+
+
 from datetime import datetime
 from datetime import date
 from datetime import timedelta
@@ -5,13 +28,49 @@ from datetime import timedelta
 import os
 from xml.etree import ElementTree
 
+import tkinter 
+from tkinter import *
 
+from threading import Timer
+
+from arrivalSorter import arrivalOPTs
+from manualNoShowEntry import manualNoShowQ
+from manualNoShowEntry import manualNOshowEntry
+
+from manualWalkEntry import manualWalkQ
+from manualWalkEntry import manualWalkEntry
 
 # section for the title
 # time data extratct
 today = date.today()
 audited = ((today - timedelta(days = 1)).strftime('%x'))
 yesterday = ((today - timedelta(days = 1)).strftime('%A'))
+
+
+# this list is utilized by groupentry function
+groupListing = []
+
+
+# this list is utilized by arrivals sorter and all manual arrival entrys
+arrivalMain = [['Name', 'ResNo.','Nights','Company','Group','Travel Agent']]
+Temprrvl = [['Name', 'ResNo.','Nights','Company','Group','Travel Agent']]
+walkData = [['Walked','Res No.','Hotel','Company','Group','Travel Agent']]
+LateCXlData = [['Late Cancellation','Res No.','Reason','Company','Group','Travel Agent']]
+
+#  variables for tkinter properties
+labelfont = 'helvetica 12 italic'
+labelFG = 'gray26'
+labelBG  = 'white'
+inputfont = 'helvetica 14'
+inputFG = 'black'
+inputBG = 'gray91'
+inputBG2 = 'gray70'
+paddingX =3 
+paddingY =5
+
+
+
+
 
 
 # title Table>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -90,115 +149,6 @@ detailedavail[2].append(numeros[1])
 detailedavail[3].append(vip)
 detailedavail[4].append(sum(numeros))
 
-
-# special events entry function
-
-# special evts table>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-specevBox = [['Special events','Location']]
-
-empty = ['None']
-evtHead =['Special events','Location']    
-
-choices=[]
-
-def specEvQ():
-    specev = input('were there special Events tonight? - type <y> or type <n>: ')
-    if specev == 'y':
-        eventLister()
-    elif specev == 'n':
-        specevBox.append(empty)
-        print('Ok cool')
-    else:
-        print('y Or n only please')
-        specEvQ()
-            
-def eventLister():
-
-    
-    def infosure():
-        sure = input('is this correct - type <y> or type <n>: ')
-        if sure == 'y':
-            print('cool!')
-        elif sure =='n':
-            eventLister()
-        else:
-            infosure()
-    specevlister = []        
-    eventName = input('please list the name of the event or <*> if there are no events at all:')
-    
-    if eventName == '*':
-        specEvQ()
-    
-    location = input('Please list the location of the event or * if you listed the wrong location : ')
-    
-    if location == '*':
-        eventLister()
-    print(f'event: {eventName} // location: {location}')
-    
-    infosure()
-
-    specevlister.append(eventName)
-    specevlister.append(location)
-    specevBox.append(specevlister)
-
-
-    def singler():
-        for x in range (1,(len(specevBox))):
-            print(f'{x}....{specevBox[x]}')
-            choices.append(str(x))
-        print(f'{len(specevBox)}....all')
-        print(choices)
-
-        allorNah = input('Type the no. of the wrong entry: ')
-        E = allorNah in choices
-        if allorNah == str(len(specevBox)):
-            specevBox.clear()
-            specevBox.append(evtHead)
-            morevents()
-        elif E is True:
-            specevBox.pop(int(allorNah))
-            print(specevBox)
-            morevents()
-        else:
-            print('try again please')
-            singler()
-    
-    def moreP():
-        morepop =  input('any more - type <y> or type <n>:')
-        if morepop == 'y':
-            singler()
-        elif morepop == 'n':
-            print('great')
-            print(specevBox)
-        else:
-            print('y Or n only please')
-            moreP()
-            
-    def morevents():
-        more = input('Anymore Events? - type <y> or type <n>: ')
-        if more == 'y':
-            eventLister()
-        elif more == 'n':
-            print(specevBox)
-            sure = input('is this information correct - type <y> or type <n>: ')
-            if sure == 'y':
-                print('great')
-            elif sure == 'n':
-                if len(specevBox)>2:
-                    singler()
-                elif len(specevBox) == 2:
-                    specevBox.clear()
-                    specevBox.append(evtHead)
-                    specEvQ()
-            else:
-                print('y Or n only please')
-                morevents()
-        else:
-            print('y Or n only please')
-            morevents()
-    
-    morevents()       
-specEvQ()
 
 
 
@@ -301,6 +251,45 @@ for taxer in range(1,((len(rtefind))+1)):
 
 
 
+
+# function allows user to enter group name for each reservation as application loops through xml data
+def groupEntry():
+    window = Tk()
+    # creates title in window border
+    window.title('OPERA Night Audit Manager Pack creator')
+    window.configure(background ='white')
+    window.geometry('400x200')
+    
+    lbl1 = Label (window, text='please enter group name for res or hit <enter> for none: ',bg = labelBG, fg=labelFG, font=labelfont)
+    lbl1.grid (row = 0,column='0', sticky = N)
+    
+    answer = Entry(window, width = 20, bg=inputBG,fg=inputFG ,font = inputfont, justify = 'center')
+    answer.grid(row = 1, column = 0,padx = paddingX, pady= paddingY, sticky = N)
+    
+    def response(a):
+        entered_text = answer.get()
+        if entered_text == '':
+            groupListing.append('None')
+            lbl2['text']= f'None Entered'
+            window.after(10,window.destroy)
+            print(groupListing)
+
+        else:
+            groupListing.append(entered_text)
+            answer.delete(0,END)
+            lbl2['text']= f'ok cool'
+            window.after(10,window.destroy)
+            print(groupListing)
+        
+    lbl2 = Label (window, text='',bg = labelBG, fg='red', font=labelfont)
+    lbl2.grid (row = 2,column='0', sticky = N)
+    answer.bind('<Return>',response)
+    
+    window.mainloop()
+
+
+
+
 # for walks late check ins no shows, Arrivals are grabbed and user enters group per res and tells program which is walk res and late cxl res
 
 arrx = 'arr3.xml'
@@ -309,20 +298,20 @@ arrf = ElementTree.parse(arrz)
 print(arrf)
 
 
-# arrival  No Show Res # # Nights Company Group Travel Agent
-# this list gathers the arrivals
-arrivals = [['Name', 'ResNo.','Nights','Company','Group','Travel Agent']]
+
+
 
 arrRtefind = arrf.findall('LIST_G_GROUP_BY1/G_GROUP_BY1/LIST_G_RESERVATION/G_RESERVATION')
 arrRte = 'LIST_G_GROUP_BY1/G_GROUP_BY1/LIST_G_RESERVATION/G_RESERVATION'
 
-# function asks user to manually enter group of res
-def groupEntry():
-    groupQ = input('please enter the group this reservation belongs to or type <n> for none: ')
-    if groupQ == 'n':
-        groupListing.append('None')
-    else:
-        groupListing.append(groupQ)
+# arrival  No Show Res # # Nights Company Group Travel Agent
+# this list gathers the arrivals
+# arrival  No Show Res # # Nights Company Group Travel Agent
+
+arrRtefind = arrf.findall('LIST_G_GROUP_BY1/G_GROUP_BY1/LIST_G_RESERVATION/G_RESERVATION')
+arrRte = 'LIST_G_GROUP_BY1/G_GROUP_BY1/LIST_G_RESERVATION/G_RESERVATION'
+
+
 
 z = len(arrRtefind)
 for arr in range(1,(z+1)):
@@ -391,69 +380,18 @@ for arr in range(1,(z+1)):
     
     groupListing = []
     print(f'Reservation: {ArrName[0].text}')
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>groupentry func is called in this loop>>>>>>>>>>>>>>
     groupEntry()
     arrivalEntry.append(groupListing[0])
     
     arrivalEntry.append(travelAgent[0])
-    arrivals.append(arrivalEntry)
+    arrivalMain.append(arrivalEntry)
+    Temprrvl.append(arrivalEntry)
 
-print(arrivals)
-
-
-# prompts user to designate walks and late cxl in arrivals
-
-ResCheck = []
-
-# walk table>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-walkData = [['Walked','Res No.','Hotel','Company','Group','Travel Agent']]
-
-# late cxl table>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-LateCXlData = [['Late Cancellation','Res No.','Reason','Company','Group','Travel Agent']]
-
-empty = [['None'],[''],[''],[''],[''],['']]
-def ArrivalsPrnter():
-    for Arco in range(1,len(arrivals)):
-        print(f'{Arco} .... {arrivals[Arco][0]}')
-        ResCheck.append(str(Arco))        
-
-def walkerCheck():
-    walkQ = input('Type the No. of the res. that was walked or <n> for None: ')
-    walker = walkQ in ResCheck
-    if walkQ == 'n':
-        walkData.append(empty)
-    elif walker is True:
-        hotelQ = input('Enter Name of Hotel that the guest was walked to: ')
-        arrivals[int(walkQ)][2] = hotelQ
-        walkData.append(arrivals[int(walkQ)])
-        arrivals.pop(int(walkQ))
-    else:
-        print('Nope Try again!')
-        walkerCheck()
-
-
-
-def LateCXlerCheck():
-    LateCXlQ = input('Type the No. of the res. that was LateCXled or <n> for None: ')
-    LateCXler = LateCXlQ in ResCheck
-    if LateCXlQ == 'n':
-        walkData.append(empty)
-    elif LateCXler is True:
-        reasonQ = input('Enter Name of reason that the guest was LateCXled to: ')
-        arrivals[int(LateCXlQ)][2] = reasonQ
-        LateCXlData.append(arrivals[int(LateCXlQ)])
-        arrivals.pop(int(LateCXlQ))
-    else:
-        print('Nope Try again!')
-        LateCXlerCheck()
-        
-ArrivalsPrnter()
-walkerCheck()
-print(walkData)
-ArrivalsPrnter()
-print(LateCXlData)
-LateCXlerCheck()
-
-ArrivalsPrnter()
-Noshowdata = arrivals
-
-
+# this function asks User to sort out wether arrivals listed rare walks late cxl or no show or if anyone on list has already arrived 
+arrivalOPTs(arrivalMain,walkData,LateCXlData)
+print(arrivalMain)
+# this function asks User if any Noshows need to be manually entered
+manualNoShowQ(arrivalMain)
+manualWalkQ(walkData)
+print(arrivalMain)
