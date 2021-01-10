@@ -30,15 +30,22 @@ from xml.etree import ElementTree
 
 import tkinter 
 from tkinter import *
+from tkinter import messagebox
 
 from threading import Timer
 
 from arrivalSorter import arrivalOPTs
-from manualEntries import manualNOshowEntry
-from manualEntries import manualLCXLEntry
 
 from manualEntries import manuaQ
-from manualEntries import manualWalkEntry
+
+
+import PyPDF2
+from PyPDF2 import PdfFileMerger
+
+from reportlab.platypus import SimpleDocTemplate
+from reportlab.platypus import Table
+from reportlab.lib.pagesizes import letter
+
 
 # section for the title
 # time data extratct
@@ -68,16 +75,248 @@ inputBG2 = 'gray70'
 paddingX =3 
 paddingY =5
 
+# created folder name
+Targfold = ['x']
 
 
+# set of list is used by filestarter function to check and assign filenames to vars
+mgrxFile =  []
+ccxFile =  []
+detavxFile =  []
+zeroxFile =  []
+taxxFile =  []
+arrxFile =  []
+forecastxFile =  []
+
+fileLocker=[mgrxFile,ccxFile,detavxFile,zeroxFile,taxxFile,arrxFile,forecastxFile]
+fileLockerSTR=['mgrReport','CC report','det avail','zero rate','tax Exmpt','arrivals','forecast']
+
+wtflist = []
+
+MissXmlsList = []
+MissPdflist = []
+
+DupXmlsList = []
+DupPdflist = []
+
+
+
+gibyroom = []
+guest = []
+manager = []
+resDet = []
+
+pdfLocker =[guest,manager]
+pdfLockerSTR =['guest','manager']
+
+pdfLocker2 =[gibyroom,resDet]
+pdfLockerSTR2 =['gibyroom','resDet']
+
+
+# prompts user to enter full name
+entryName = [[]]
+def enterName():
+    window = Tk()
+    # creates title in window border
+    window.title('OPERA Night Audit Manager Pack creator')
+    window.configure(background ='white')
+    window.geometry('235x175')
+
+    def name(x):
+        usergot = username.get()
+        entryName[0].append(f'created by {usergot}')
+        window.destroy()
+    
+    username = Entry(window, bg='gray64',fg=inputFG ,font = inputfont, justify = 'center')
+    username.grid(row = 1, column = 0,padx =5, pady=20, sticky = N)
+    
+    lbl1 = Label (window, text='Enter\nFull Name\nplease ',bg = labelBG, fg='black', font='helvetica 15 italic')
+    lbl1.grid (row = 0,column='0',padx = 5,pady=10, sticky = N)
+
+
+    username.bind('<Return>',name)
+    window.mainloop()
+enterName()
+
+
+
+
+
+# creates the folder names it of  date being audited...checks if it exists aND prompts user to save xml and pdf files to folder
+def createFolder():
+    
+    def folderError():
+        window = Tk()
+        # creates title in window border
+        window.title('OPERA Night Audit Manager Pack creator')
+        window.configure(background ='white')
+        window.geometry('150x250')
+
+        def TryAgain():
+            window.destroy()
+            createFolder()
+        lbl1 = Label (window, text=f'ERROR!!!\n{Targfold[0]}\nalready Exists!!!\nMove folder then\nClick Try Again',bg = labelBG, fg='black', font='helvetica 14 italic')
+        lbl1.grid (row = 0,column='0',padx = 0,pady=5, sticky = N)
+
+        tryagain=Button(window, text=f'TRY\nAgain',font='helvetica 12 italic',width = 9,height=4,background ='red',fg = 'white' ,command = TryAgain) .grid(row= 8, column= 0,padx=0,pady =5, sticky = N)
+
+        window.mainloop()
+    
+    
+    
+    def folderMessage():
+        window = Tk()
+        # creates title in window border
+        window.title('OPERA Night Audit Manager Pack creator')
+        window.configure(background ='white')
+        window.geometry('150x220')
+
+        def start():
+            window.destroy()
+        lbl1 = Label (window, text= f'Download\nxml and pdf files\ninto folder\n{Targfold[0]}',bg = labelBG, fg='black', font='helvetica 14 italic')
+        lbl1.grid (row = 0,column='0',padx = 0,pady=5, sticky = N)
+
+        start=Button(window, text=f'Files\nReady',font='helvetica 12 italic',width = 9,height=4,background ='dodger blue',fg='white' ,command = start) .grid(row= 8, column= 0,padx=0,pady =5, sticky = N)
+
+        window.mainloop()
+    
+    
+    today = date.today()
+    audited = ((today - timedelta(days = 1)).strftime('%x'))
+    directory = audited.replace('/','')
+    Targfold[0] = directory
+    already = os.path.exists(directory)
+    if already is False:
+        os.makedirs(directory)
+        folderMessage()
+    else:
+        print('Error!check folder names')
+        folderError()
+
+
+createFolder()
+
+
+# this checks the folder created and checks if user has the correct files in folder
+def fileStarter():
+	filesContained = os.listdir(Targfold[0])
+
+	def fileMiss():
+		window = Tk()
+		window.title('OPERA Night Audit Manager Pack creator')
+		window.configure(background ='white')        
+		window.geometry('500x500')
+		Label (window, text=f'{len(MissXmlsList)} issues ...{MissXmlsList}',bg = labelBG, fg='violet red', font='helvetica 12') .grid (row = 1,column='0',padx = 20,pady=0, sticky = W)
+		Label (window, text=f'{len(DupXmlsList)} issues ...{DupXmlsList}',bg = labelBG, fg='violet red', font='helvetica 12') .grid (row = 2,column='0',padx = 20,pady=0, sticky = W)
+		Label (window, text=f'{len(MissPdflist)} issues ...{MissPdflist}',bg = labelBG, fg='purple3', font='helvetica 12') .grid (row = 3,column='0',padx = 20,pady=0, sticky =W)
+		Label (window, text=f'{len(DupPdflist)} issues ...{DupPdflist}',bg = labelBG, fg='purple3', font='helvetica 12') .grid (row = 4,column='0',padx = 20,pady=0, sticky = W)
+
+
+		def start():
+			MissXmlsList.clear()
+			MissPdflist.clear()
+			DupXmlsList.clear()
+			DupPdflist.clear()
+			window.destroy()
+			fileStarter()
+		lbl1 = Label (window, text=f'!!!!!!!!\nFILE MISSING IN\n{Targfold[0]}\nMissing contents:',bg = labelBG, fg='black', font='helvetica 14 italic')
+		lbl1.grid (row = 0,column='0',padx = 20,pady=5, sticky = W)
+
+		start=Button(window, text=f'Files\nReady',font='helvetica 12 italic',width = 9,height=4,background ='dodger blue' ,command = start) .grid(row= 30, column= 0,padx=20,pady =20, sticky = W)
+
+		window.mainloop()
+
+	for file in range(len(filesContained)):
+		if filesContained[file].startswith('man') and filesContained[file].endswith('xml'):
+			mgrxFile.append(filesContained[file])
+		elif filesContained[file].startswith('fin'):
+			ccxFile.append(filesContained[file])
+		elif filesContained[file].startswith('det'):
+			detavxFile.append(filesContained[file])
+		elif filesContained[file].startswith('gi_'):
+			zeroxFile.append(filesContained[file])
+		elif filesContained[file].startswith('tax'):
+			taxxFile.append(filesContained[file])
+		elif filesContained[file].startswith('res') and filesContained[file].endswith('xml'):
+			arrxFile.append(filesContained[file])
+		elif filesContained[file].startswith('his'):
+			forecastxFile.append(filesContained[file])
+		elif filesContained[file].startswith('man') and filesContained[file].endswith('pdf'):
+			manager.append(filesContained[file])
+		elif filesContained[file].startswith('res') and filesContained[file].endswith('pdf'):
+			resDet.append(filesContained[file])
+		elif filesContained[file].startswith('giby'):
+			gibyroom.append(filesContained[file])
+		elif filesContained[file].startswith('guest'):
+			guest.append(filesContained[file])
+		else:
+			wtf.append(filesContained[file])
+
+	print(fileLocker)
+	print(pdfLocker)
+	print(pdfLocker2)
+
+	for seek in range(len(fileLocker)):
+		if len(fileLocker[seek]) == 0:
+			MissXmlsList.append(f'missing {fileLockerSTR[seek]} XML file in folder !!!')
+			print('missing XML file')
+		elif len(fileLocker[seek]) >1:
+			DupXmlsList.append(f'more than 1 {fileLockerSTR[seek]} XML  file in folder !!! ')
+			print(f'more than 1 {fileLockerSTR[seek]} XML  file in folder ')
+		else:
+			pass
+
+	for seekp in range(len(pdfLocker)):
+		if len(pdfLocker[seekp]) == 0:
+			MissPdflist.append(f'missing {pdfLockerSTR[seekp]} PDF file in folder !!!')
+			print(f'missing {pdfLockerSTR[seekp]} PDF file in folder')
+		elif len(pdfLocker[seekp])> 1:
+			DupPdflist.append(f'more than 1 {pdfLockerSTR[seekp]} PDF file in folder !!!')
+			print(f'more than 1 {pdfLockerSTR[seekp]} PDF file in folder')
+		else:
+			pass
+
+	for seekd in range(len(pdfLocker2)):
+		if len(pdfLocker2[seekd]) < 2:
+			MissPdflist.append(f'missing {pdfLockerSTR2[seekd]} PDF file in folder !!!')
+			print(f'missing {pdfLockerSTR2[seekd]} PDF file in folder')
+		elif len(pdfLocker2[seekd])> 2:
+			DupPdflist.append(f' More than 2 {pdfLockerSTR2[seekd]} PDF file in folder !!!')
+			print(f'More than 2 {pdfLockerSTR2[seekd]} PDF file in folder')
+		else:
+			pass
+	print(MissPdflist)
+	print(MissXmlsList)
+	print(DupXmlsList)
+	print(DupPdflist)
+
+	if len(MissXmlsList)>0 or len(DupXmlsList)>0 or len(MissPdflist)>0 or len(DupPdflist)>0:
+		mgrxFile.clear()
+		ccxFile.clear()
+		detavxFile.clear()
+		zeroxFile.clear()
+		taxxFile.clear()
+		arrxFile.clear()
+		forecastxFile.clear()
+		gibyroom.clear()
+		guest.clear()
+		manager.clear()
+		resDet.clear()
+		fileMiss()
+	else:
+		print(fileLocker)
+		print(pdfLocker)
+		print(pdfLocker2)
+		print("all's gravy baby!")
+fileStarter()
 
 
 
 # title Table>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-title = [['The Maritime Hotel'],['Night Audit Report'],[yesterday], [audited]]
+title = [['The Maritime Hotel'],['Night Audit Report'],[f'{yesterday} {audited}']]
 
 # stat Title table>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-stattitle = ['STATISTICS']
+stattitle = [['STATISTICS']]
 
 # mgr xml data extract
 # statistics table>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<
@@ -454,6 +693,7 @@ for x in range(2,9):
 
 
 print(title)
+print(entryName)
 print(stattitle)
 print(statistics )
 print(detailedavail)
